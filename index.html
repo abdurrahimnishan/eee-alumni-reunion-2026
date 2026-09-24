@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EEE Reunion 2026 – Create Your Poster</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Hind+Siliguri:wght@600;700&family=Kaushan+Script&family=Montserrat:wght@500;700&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
+<style>
+/* ===== PAGE STYLE (form + preview) ===== */
+:root{--maroon:#6B0F1F;--gold:#C9974B;--cream:#FBF1DC}
+*{box-sizing:border-box}
+body{margin:0;background:#F3E7CD;font-family:Montserrat,Arial,sans-serif;color:#3F0812}
+header{background:var(--maroon);color:#EBCB8B;text-align:center;padding:18px 12px;border-bottom:4px solid var(--gold)}
+header h1{margin:0;font:800 28px 'Playfair Display',serif}
+header p{margin:4px 0 0;font-size:14px}
+.grid{max-width:1100px;margin:20px auto;padding:0 14px;display:grid;grid-template-columns:340px 1fr;gap:20px;align-items:start}
+.card{background:#fff;border:1px solid #E6D3A8;border-radius:14px;padding:18px}
+label{display:block;font-weight:700;font-size:13px;margin:14px 0 5px}
+label:first-child{margin-top:0}
+label i{color:#B00020;font-style:normal}
+label small{font-weight:500;color:#7a6a5a}
+input[type=text]{width:100%;padding:10px;border:1px solid #D9C7A5;border-radius:8px;font:inherit}
+input[type=text]:focus,button:focus-visible{outline:3px solid var(--gold);outline-offset:1px}
+input[type=file],input[type=range]{width:100%}
+.btn{width:100%;margin-top:18px;padding:13px;border:0;border-radius:10px;background:var(--maroon);color:#EBCB8B;font:700 16px Montserrat,Arial,sans-serif;cursor:pointer}
+.hint{font-size:12px;color:#7a6a5a;line-height:1.5;margin:12px 0 0}
+canvas{width:100%;max-width:640px;height:auto;border-radius:6px;box-shadow:0 10px 30px #6B0F1F40}
+@media(max-width:820px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header><h1>EEE Alumni Reunion 2026</h1><p>Create your personalized reunion poster</p></header>
+
+<div class="grid">
+  <div class="card">
+    <label for="name">Name <i>*</i></label>
+    <input id="name" type="text" placeholder="e.g. Md.Abdur Rahim ">
+    <label for="role">Designation <small>(optional)</small></label>
+    <input id="role" type="text" placeholder="e.g. Assistant Engineer ">
+    <label for="company">Company / Organization <small>(optional)</small></label>
+    <input id="company" type="text" placeholder="e.g.  ABC ltd.">
+    <label for="batch">Batch <i>*</i></label>
+    <input id="batch" type="text" placeholder="e.g. 39">
+    <label for="photo">Your photo <i>*</i></label>
+    <input id="photo" type="file" accept="image/*">
+    <label for="z">Zoom</label>
+    <input id="z" type="range" min="1" max="3" step="0.05" value="1">
+    <label for="ox">Move left / right</label>
+    <input id="ox" type="range" min="-250" max="250" step="2" value="0">
+    <label for="oy">Move up / down</label>
+    <input id="oy" type="range" min="-250" max="250" step="2" value="0">
+    <button class="btn" onclick="download()">Download Poster</button>
+    <p class="hint">Your photo is processed only in your browser. Nothing is uploaded or saved.</p>
+  </div>
+  <div class="card" style="text-align:center"><canvas id="c"></canvas></div>
+</div>
+
+<script>
+/* =====================================================
+   1. CONFIG  ← edit only this block for text, colors,
+   fonts and image files
+   ===================================================== */
+const CFG = {
+  W: 1080, H: 1350,                               // poster size (px)
+  title1: 'EEE DEPARTMENT',
+  title2: 'REUNION',
+  title3: '2026',
+  tagline: 'Reconnect • Relive • Reunite',
+  date: '02 October 2026',
+  venue: ['City University', 'Permanent Campus'],  // one item = one line
+  msg: ['আমি আসছি...', 'আপনি আসছেন তো?'],
+  org: 'Department of EEE',
+  hashtag: '#EEEAlumniReunion2026',
+  assets: {                                        // optional images (put in /assets)
+    logoL: 'assets/logo-left.png',
+    logoR: 'assets/logo-right.png',
+    bg: 'assets/campus.jpg',
+    bgOpacity: 0.10                                // 0.10 = 10%
+  },
+  color: { maroon: '#6B0F1F', maroonD: '#3F0812', gold: '#C9974B', goldL: '#EBCB8B', ink: '#5A3A40' },
+  font: {
+    brush: "'Kaushan Script',cursive",
+    serif: "'Playfair Display',serif",
+    sans: "Montserrat,Arial,sans-serif",
+    script: "'Dancing Script',cursive",
+    bn: "'Hind Siliguri',sans-serif"
+  }
+};
+
+/* =====================================================
+   2. HELPERS
+   ===================================================== */
+const $ = id => document.getElementById(id);
+const val = id => $(id).value.trim();
+const c = $('c'), x = c.getContext('2d');
+c.width = CFG.W; c.height = CFG.H;
+const K = CFG.color;
+const F = (w, s, fam) => `${w} ${s}px ${fam}`;
+let seed = 1;
+const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+
+function cover(im, X, Y, W, H, z = 1, ox = 0, oy = 0) {
+  const s = Math.max(W / im.width, H / im.height) * z, w = im.width * s, h = im.height * s;
+  x.drawImage(im, X + (W - w) / 2 + ox, Y + (H - h) / 2 + oy, w, h);
+}
+function rr(X, Y, W, H, R) {
+  x.beginPath(); x.moveTo(X + R, Y);
+  x.arcTo(X + W, Y, X + W, Y + H, R); x.arcTo(X + W, Y + H, X, Y + H, R);
+  x.arcTo(X, Y + H, X, Y, R); x.arcTo(X, Y, X + W, Y, R); x.closePath();
+}
+function spaced(t, cx, y, sp) {                    // letter-spaced centered text
+  const chars = [...t];
+  let px = cx - (chars.reduce((a, ch) => a + x.measureText(ch).width + sp, -sp)) / 2;
+  x.textAlign = 'left';
+  chars.forEach(ch => { x.fillText(ch, px, y); px += x.measureText(ch).width + sp; });
+  x.textAlign = 'center';
+}
+function fit(t, maxW, sz, wt, fam) {               // shrink font until text fits
+  x.font = F(wt, sz, fam);
+  while (x.measureText(t).width > maxW && sz > 14) { sz -= 2; x.font = F(wt, sz, fam); }
+  return sz;
+}
+function star(cx, cy, r, col) {
+  x.fillStyle = col; x.beginPath();
+  for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4, d = i % 2 ? r * .28 : r; x.lineTo(cx + Math.cos(a) * d, cy + Math.sin(a) * d); }
+  x.closePath(); x.fill();
+}
+
+/* images (all optional – poster works without them) */
+const imgs = {};
+function loadImg(k, src) { const i = new Image(); i.onload = () => { imgs[k] = i; draw(); }; i.src = src; }
+let photo = null;
+
+/* =====================================================
+   3. DRAW SECTIONS  ← change layout numbers here
+   ===================================================== */
+function drawBackground() {
+  const g = x.createLinearGradient(0, 0, 0, CFG.H);
+  g.addColorStop(0, '#FDF5E4'); g.addColorStop(1, '#F1DDB6');
+  x.fillStyle = g; x.fillRect(0, 0, CFG.W, CFG.H);
+  if (imgs.bg) { x.globalAlpha = CFG.assets.bgOpacity; cover(imgs.bg, 0, 0, CFG.W, CFG.H); x.globalAlpha = 1; }
+  seed = 11; const cols = [K.gold, K.maroon, K.goldL];   // confetti
+  x.globalAlpha = .55;
+  for (let i = 0; i < 55; i++) {
+    const px = rnd() * CFG.W, py = rnd() * 1000, s = 4 + rnd() * 8;
+    if (i % 4 === 0) star(px, py, s * 1.4, cols[i % 3]);
+    else { x.fillStyle = cols[i % 3]; x.save(); x.translate(px, py); x.rotate(rnd() * 3); x.fillRect(-s / 2, -s / 4, s, s / 2); x.restore(); }
+  }
+  x.globalAlpha = 1;
+}
+
+function bunting(x0, y0, cx, cy, x1, y1, n) {
+  x.strokeStyle = K.gold; x.lineWidth = 3; x.beginPath(); x.moveTo(x0, y0); x.quadraticCurveTo(cx, cy, x1, y1); x.stroke();
+  for (let i = 0; i < n; i++) {
+    const t = (i + .5) / n, u = 1 - t;
+    const px = u * u * x0 + 2 * u * t * cx + t * t * x1, py = u * u * y0 + 2 * u * t * cy + t * t * y1;
+    x.fillStyle = i % 2 ? K.gold : K.maroon;
+    x.beginPath(); x.moveTo(px - 24, py); x.lineTo(px + 24, py + 4); x.lineTo(px, py + 62); x.closePath(); x.fill();
+  }
+}
+
+function logo(cx, cy, r, im) {
+  x.save(); x.beginPath(); x.arc(cx, cy, r, 0, 7); x.fillStyle = '#fff'; x.fill(); x.clip();
+  if (im) { const s = Math.min(2 * r / im.width, 2 * r / im.height) * .9; x.drawImage(im, cx - im.width * s / 2, cy - im.height * s / 2, im.width * s, im.height * s); }
+  else { x.fillStyle = K.maroon; x.font = F(700, 24, CFG.font.sans); x.textAlign = 'center'; x.fillText('LOGO', cx, cy + 8); }
+  x.restore();
+  x.strokeStyle = K.gold; x.lineWidth = 6; x.beginPath(); x.arc(cx, cy, r + 6, 0, 7); x.stroke();
+  x.strokeStyle = K.maroon; x.lineWidth = 2; x.beginPath(); x.arc(cx, cy, r + 15, 0, 7); x.stroke();
+}
+
+function brush(cx, cy, w, h) {                     // rough gold brush strip
+  seed = 5; const L = cx - w / 2, R = cx + w / 2, T = cy - h / 2, B = cy + h / 2, j = () => rnd() * 12 - 6;
+  const g = x.createLinearGradient(L, 0, R, 0);
+  g.addColorStop(0, K.gold); g.addColorStop(.5, K.goldL); g.addColorStop(1, K.gold);
+  x.fillStyle = g; x.beginPath(); x.moveTo(L, T);
+  for (let i = 1; i <= 16; i++) x.lineTo(L + w * i / 16, T + j());
+  for (let i = 1; i <= 6; i++) x.lineTo(R + j() * 2, T + h * i / 6);
+  for (let i = 15; i >= 0; i--) x.lineTo(L + w * i / 16, B + j());
+  for (let i = 5; i >= 1; i--) x.lineTo(L + j() * 2, T + h * i / 6);
+  x.closePath(); x.fill();
+}
+
+function drawTitle() {
+  const f = CFG.font; x.textAlign = 'center';
+  x.fillStyle = K.maroon; x.font = F(700, 32, f.sans); spaced(CFG.title1, 540, 150, 10);
+  star(285, 138, 12, K.gold); star(795, 138, 12, K.gold); star(255, 300, 9, K.maroon); star(830, 310, 10, K.gold);
+  fit(CFG.title2, 600, 150, 400, f.brush);
+  x.fillStyle = K.gold; x.fillText(CFG.title2, 514, 294);           // gold shadow
+  x.fillStyle = K.maroon; x.fillText(CFG.title2, 510, 290);
+  brush(540, 362, 330, 72);
+  x.fillStyle = '#fff'; x.font = F(400, 66, f.brush); x.fillText(CFG.title3, 540, 388);
+}
+
+function drawTagline() {
+  x.save(); x.translate(305, 520); x.rotate(-.06); x.textAlign = 'center';
+  fit(CFG.tagline, 440, 38, 700, CFG.font.script);
+  x.fillStyle = K.maroon; x.fillText(CFG.tagline, 0, 0);
+  x.strokeStyle = K.gold; x.lineWidth = 3; x.beginPath(); x.moveTo(-170, 18); x.lineTo(170, 18); x.stroke();
+  x.restore();
+}
+
+function drawEvent() {
+  const f = CFG.font; x.textAlign = 'left';
+  const item = (lab, lines, y) => {
+    x.fillStyle = K.gold; x.font = F(700, 20, f.sans); x.fillText(lab, 70, y); x.fillRect(70, y + 10, 46, 3);
+    x.fillStyle = K.maroon; x.font = F(700, 38, f.serif);
+    lines.forEach((t, i) => x.fillText(t, 70, y + 56 + i * 46));
+  };
+  item('DATE', [CFG.date], 650);
+  item('VENUE', CFG.venue, 790);
+}
+
+function balloon(cx, cy, r, c1, c2) {
+  x.strokeStyle = '#8A6A3A'; x.lineWidth = 2; x.beginPath();
+  x.moveTo(cx, cy + r + 11); x.quadraticCurveTo(cx - 15, cy + r + 60, 1030, 775); x.stroke();
+  const g = x.createRadialGradient(cx - r * .35, cy - r * .4, 4, cx, cy, r * 1.1);
+  g.addColorStop(0, c1); g.addColorStop(1, c2); x.fillStyle = g;
+  x.beginPath(); x.ellipse(cx, cy, r * .85, r, 0, 0, 7); x.fill();
+  x.fillStyle = c2; x.beginPath(); x.moveTo(cx, cy + r); x.lineTo(cx - 7, cy + r + 11); x.lineTo(cx + 7, cy + r + 11); x.fill();
+}
+function drawBalloons() {
+  balloon(1010, 500, 50, '#B0284A', '#5A0B19');
+  balloon(1055, 590, 45, '#F0D08A', '#B98436');
+  balloon(985, 665, 40, '#FFFFFF', '#D9C7A5');
+}
+
+function drawParticipant() {
+  const f = CFG.font, cx = 790, cy = 575, r = 145;
+  const name = val('name') || 'Your Name', role = val('role'), co = val('company'), b = val('batch') || '00';
+  // photo circle
+  x.save(); x.shadowColor = '#0004'; x.shadowBlur = 24; x.shadowOffsetY = 8;
+  x.fillStyle = '#fff'; x.beginPath(); x.arc(cx, cy, r + 6, 0, 7); x.fill(); x.restore();
+  x.save(); x.beginPath(); x.arc(cx, cy, r, 0, 7); x.clip();
+  if (photo) cover(photo.img, cx - r, cy - r, 2 * r, 2 * r, photo.z, photo.ox, photo.oy);
+  else { x.fillStyle = '#EBD9B4'; x.fillRect(cx - r, cy - r, 2 * r, 2 * r); x.fillStyle = K.maroon; x.font = F(700, 26, f.sans); x.textAlign = 'center'; x.fillText('YOUR PHOTO', cx, cy + 8); }
+  x.restore();
+  x.strokeStyle = K.gold; x.lineWidth = 12; x.beginPath(); x.arc(cx, cy, r + 6, 0, 7); x.stroke();
+  x.strokeStyle = K.maroon; x.lineWidth = 5; x.beginPath(); x.arc(cx, cy, r + 18, 0, 7); x.stroke();
+  // text block – optional lines collapse and the block re-centers
+  const L = [[role, 500, 26, K.ink], [co, 700, 24, K.maroon]].filter(a => a[0]);
+  const n = L.length, total = 36 + 40 * n + 18 + 54, ny = 785 + (190 - total) / 2 + 36;
+  x.textAlign = 'center'; x.fillStyle = K.maroon; fit(name, 440, 46, 800, f.serif); x.fillText(name, cx, ny);
+  L.forEach((a, i) => { fit(a[0], 440, a[2], a[1], f.sans); x.fillStyle = a[3]; x.fillText(a[0], cx, ny + 40 * (i + 1) - 2); });
+  // batch badge
+  const by = ny + 40 * n + 18, label = `EEE  •  ${b} Batch`;
+  fit(label, 420, 26, 700, f.sans);
+  const w = x.measureText(label).width + 64;
+  rr(cx - w / 2, by, w, 54, 27); x.fillStyle = K.maroon; x.fill(); x.strokeStyle = K.gold; x.lineWidth = 3; x.stroke();
+  x.fillStyle = K.goldL; x.fillText(label, cx, by + 36);
+}
+
+function drawMessage() {
+  const g = x.createLinearGradient(0, 1000, 0, 1165); g.addColorStop(0, '#84152B'); g.addColorStop(1, K.maroonD);
+  x.save(); x.shadowColor = '#0005'; x.shadowBlur = 18; x.shadowOffsetY = 6; rr(70, 1000, 940, 165, 26); x.fillStyle = g; x.fill(); x.restore();
+  x.strokeStyle = K.gold; x.lineWidth = 4; rr(70, 1000, 940, 165, 26); x.stroke();
+  x.lineWidth = 1.5; rr(82, 1012, 916, 141, 18); x.stroke();
+  x.textAlign = 'center';
+  CFG.msg.forEach((t, i) => { x.fillStyle = i ? '#fff' : K.goldL; x.font = F(700, i ? 50 : 56, CFG.font.bn); x.fillText(t, 540, 1066 + i * 64); });
+}
+
+function drawFooter() {
+  const f = CFG.font, wave = () => { x.moveTo(0, 1215); x.bezierCurveTo(300, 1180, 700, 1262, 1080, 1205); };
+  x.beginPath(); wave(); x.lineTo(1080, 1350); x.lineTo(0, 1350); x.closePath();
+  const g = x.createLinearGradient(0, 1190, 0, 1350); g.addColorStop(0, '#7A1228'); g.addColorStop(1, K.maroonD);
+  x.fillStyle = g; x.fill();
+  x.strokeStyle = K.gold; x.lineWidth = 4; x.beginPath(); wave(); x.stroke();
+  x.textAlign = 'left'; x.fillStyle = '#F6E7C4'; x.font = F(500, 20, f.sans); x.fillText('ORGANIZED BY', 70, 1272);
+  x.fillStyle = K.gold; x.fillRect(70, 1284, 260, 3);
+  x.fillStyle = K.goldL; x.font = F(700, 34, f.serif); x.fillText(CFG.org, 70, 1326);
+  x.textAlign = 'right'; x.font = F(700, 24, f.sans); x.fillText(CFG.hashtag, 1010, 1318);
+}
+
+/* =====================================================
+   4. MAIN DRAW  ← order = back to front
+   ===================================================== */
+function draw() {
+  x.clearRect(0, 0, CFG.W, CFG.H);
+  drawBackground();
+  bunting(-10, 8, 130, 62, 270, 30, 6);
+  bunting(1090, 8, 950, 62, 810, 30, 6);
+  logo(130, 195, 85, imgs.logoL);
+  logo(950, 195, 85, imgs.logoR);
+  drawTitle(); drawTagline(); drawEvent();
+  drawBalloons(); drawParticipant();
+  drawMessage(); drawFooter();
+}
+
+/* =====================================================
+   5. EVENTS
+   ===================================================== */
+['name', 'role', 'company', 'batch'].forEach(id => $(id).oninput = draw);
+
+$('photo').onchange = e => {
+  const file = e.target.files[0]; if (!file) return;
+  const i = new Image();
+  i.onload = () => { photo = { img: i, z: 1, ox: 0, oy: 0 }; $('z').value = 1; $('ox').value = 0; $('oy').value = 0; draw(); };
+  i.src = URL.createObjectURL(file);
+};
+['z', 'ox', 'oy'].forEach(k => $(k).oninput = () => { if (photo) { photo[k] = +$(k).value; draw(); } });
+
+function download() {
+  const n = val('name'), b = val('batch');
+  if (!n || !b || !photo) return alert('Please add your Name, Batch and Photo first.');
+  draw();
+  try {
+    c.toBlob(bl => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(bl);
+      a.download = 'EEE_Reunion_2026_' + n.replace(/\s+/g, '_') + '.png';
+      a.click();
+    }, 'image/png');
+  } catch (err) {
+    alert('Export failed. Open this page from a hosted link or a local server, not directly from the file.');
+  }
+}
+
+/* start: draw once, load fonts + images, redraw */
+draw();
+const FONT_LIST = [F(400, 40, CFG.font.brush), F(700, 40, CFG.font.serif), F(800, 40, CFG.font.serif),
+  F(500, 40, CFG.font.sans), F(700, 40, CFG.font.sans), F(700, 40, CFG.font.script), F(700, 40, CFG.font.bn)];
+Promise.all(FONT_LIST.map(s => document.fonts.load(s, 'Aআ'))).catch(() => {}).then(draw);
+loadImg('logoL', CFG.assets.logoL); loadImg('logoR', CFG.assets.logoR); loadImg('bg', CFG.assets.bg);
+</script>
+</body>
+</html>
