@@ -163,7 +163,7 @@ function bunting(x0, y0, cx, cy, x1, y1, n) {
 
 function logo(cx, cy, r, im) {
   x.save(); x.beginPath(); x.arc(cx, cy, r, 0, 7); x.fillStyle = '#fff'; x.fill(); x.clip();
-  if (im) { const s = Math.min(2 * r / im.width, 2 * r / im.height) * 1.05; x.drawImage(im, cx - im.width * s / 2, cy - im.height * s / 2, im.width * s, im.height * s); }
+  if (im) { const s = Math.min(2 * r / im.width, 2 * r / im.height) * 1.06; x.drawImage(im, cx - im.width * s / 2, cy - im.height * s / 2, im.width * s, im.height * s); }
   else { x.fillStyle = K.maroon; x.font = F(700, 24, CFG.font.sans); x.textAlign = 'center'; x.fillText('LOGO', cx, cy + 8); }
   x.restore();
   x.strokeStyle = K.gold; x.lineWidth = 6; x.beginPath(); x.arc(cx, cy, r + 6, 0, 7); x.stroke();
