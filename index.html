@@ -184,7 +184,7 @@ function brush(cx, cy, w, h) {                     // rough gold brush strip
 
 function drawTitle() {
   const f = CFG.font; x.textAlign = 'center';
-  x.fillStyle = K.maroon; x.font = F(700, 32, f.sans); spaced(CFG.title1, 540, 150, 10);
+     x.fillStyle = K.maroon; x.font = F(800, 48, f.serif); spaced(CFG.title1, 540, 150, 16);
   star(285, 138, 12, K.gold); star(795, 138, 12, K.gold); star(255, 300, 9, K.maroon); star(830, 310, 10, K.gold);
   fit(CFG.title2, 600, 150, 400, f.brush);
   x.fillStyle = K.gold; x.fillText(CFG.title2, 514, 294);           // gold shadow
